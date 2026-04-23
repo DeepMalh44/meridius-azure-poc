@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridius — Azure Go-Live Implementation Plan</title>
+<style>
+  :root {
+    --ms-blue: #0078d4;
+    --ms-dark: #1b1b1b;
+    --ms-gray: #605e5c;
+    --ms-light: #f3f2f1;
+    --ms-border: #d2d0ce;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+    color: var(--ms-dark);
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 32px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--ms-blue);
+    border-bottom: 3px solid var(--ms-blue);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ms-dark);
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ms-border);
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ms-gray);
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ms-blue);
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  p {
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  ul, ol {
+    margin: 8px 0 16px 24px;
+    font-size: 14px;
+  }
+  li { margin-bottom: 4px; }
+  strong { font-weight: 600; }
+  hr {
+    border: none;
+    border-top: 1px solid var(--ms-border);
+    margin: 28px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px 0;
+    font-size: 13px;
+  }
+  thead {
+    background: var(--ms-blue);
+    color: #fff;
+  }
+  th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ms-border);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) {
+    background: var(--ms-light);
+  }
+  tbody tr:hover {
+    background: #e8f4fd;
+  }
+  blockquote {
+    border-left: 4px solid var(--ms-blue);
+    background: #f0f6ff;
+    padding: 12px 16px;
+    margin: 12px 0 16px 0;
+    font-size: 13px;
+    color: var(--ms-gray);
+  }
+  blockquote p { margin: 0; }
+  code {
+    background: var(--ms-light);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 12.5px;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    margin: 12px 0 20px 0;
+    white-space: pre;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+  em {
+    font-style: italic;
+    color: var(--ms-gray);
+  }
+  .phase-header {
+    background: var(--ms-blue);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 6px 6px 0 0;
+    margin-top: 24px;
+    margin-bottom: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .phase-body {
+    border: 1px solid var(--ms-border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  @media print {
+    body { padding: 20px; font-size: 11px; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 17px; break-before: auto; }
+    table { font-size: 10px; page-break-inside: avoid; }
+    pre { font-size: 9px; white-space: pre-wrap; }
+    blockquote { background: #f5f5f5; }
+    thead { background: #333; color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tbody tr:nth-child(even) { background: #f5f5f5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .phase-header { background: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Meridius — Azure Go-Live Implementation Plan</h1>
+<p><strong>Date:</strong> April 20, 2026<br />
+<strong>Prepared for:</strong> Meridius / Lowe's Commerce Solutions Engineering &amp; Leadership<br />
+<strong>Prepared by:</strong> Microsoft Azure Team<br />
+<strong>Companion to:</strong> Meridius Azure Architecture Review &amp; Pricing Summary</p>
+
+<hr />
+
+<h2>1. Executive Summary</h2>
+
+<p>This plan outlines <strong>what Meridius needs to build, what teams to staff, and how to sequence the work</strong> to go from "we've decided on Azure" to a production Marketplace listing with live retailer deployments. The plan covers three parallel tracks:</p>
+
+<ol>
+<li><strong>IaC &amp; Marketplace Packaging</strong> — ARM/Bicep templates, CNAB bundle, Partner Center listing</li>
+<li><strong>Application Modernization</strong> — Containerize/adapt workloads for AKS, wire up Azure PaaS</li>
+<li><strong>Store Edge &amp; Fleet Management</strong> — Azure Arc integration, ACR-based image distribution</li>
+</ol>
+
+<p><strong>Target:</strong> First retailer pilot deployment in <strong>~14–16 weeks</strong> from kickoff (includes Marketplace certification).</p>
+
+<hr />
+
+<h2>2. What IaC Is Needed and Why</h2>
+
+<h3>2.1 The Marketplace Deployment Model</h3>
+
+<p>Azure Marketplace <strong>Solution Templates</strong> use ARM (Azure Resource Manager) templates — or Bicep, which compiles to ARM — to define every Azure resource that gets created when a retailer clicks "Deploy." This is not optional; it's how Marketplace works.</p>
+
+<p><strong>What Meridius must produce:</strong></p>
+
+<table>
+<thead>
+<tr><th>Artifact</th><th>Format</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Main deployment template</strong></td><td>ARM JSON or Bicep → ARM</td><td>Creates all Azure resources: AKS, PostgreSQL, Event Hubs, VNet, Private Endpoints, Key Vault, ACR, Grafana, Monitor, App Gateway, Load Balancer</td></tr>
+<tr><td><strong>createUiDefinition.json</strong></td><td>JSON</td><td>The Azure Portal wizard that retailers see — dropdowns for region, SKU size, optional modules (chatbot yes/no, Vision AI yes/no), admin credentials</td></tr>
+<tr><td><strong>Nested/linked templates</strong></td><td>ARM JSON or Bicep</td><td>Modular pieces (networking, AKS, data, security, observability) that the main template orchestrates</td></tr>
+<tr><td><strong>CNAB bundle manifest</strong></td><td>porter.yaml or equivalent</td><td>Packages the ARM templates + container images together into a single deployable unit for Marketplace</td></tr>
+<tr><td><strong>Helm charts</strong></td><td>Helm v3</td><td>Deploys Meridius application workloads (Control Center, Commerce Gateway, AI services) onto AKS after infrastructure is provisioned</td></tr>
+<tr><td><strong>Post-deployment scripts</strong></td><td>Bash / PowerShell</td><td>Seeds ACR with images, configures NGINX Ingress, creates Kubernetes namespaces, applies network policies</td></tr>
+</tbody>
+</table>
+
+<h3>2.2 Bicep vs ARM — Recommendation</h3>
+
+<p><strong>Use Bicep for authoring, ARM for Marketplace submission.</strong> Bicep is far more readable and maintainable, and <code>az bicep build</code> compiles it to the ARM JSON that Partner Center requires. This gives you:</p>
+
+<ul>
+<li>Human-readable IaC that developers can review in PRs</li>
+<li>ARM-compatible output that Marketplace accepts</li>
+<li>Module system for reusable components (networking module, AKS module, data module, etc.)</li>
+</ul>
+
+<h3>2.3 Template Architecture (Recommended)</h3>
+
+<pre><code>meridius-marketplace/
+├── mainTemplate.json              ← Entry point (compiled from main.bicep)
+├── createUiDefinition.json        ← Portal wizard definition
+├── modules/
+│   ├── networking.bicep           ← VNet, subnets, NSGs, Private DNS Zones
+│   ├── aks.bicep                  ← AKS cluster, node pools, managed identity
+│   ├── data.bicep                 ← PostgreSQL (commerce + TSDB), Event Hubs
+│   ├── security.bicep             ← Key Vault, Managed Identities, Defender
+│   ├── observability.bicep        ← Log Analytics, App Insights, Grafana
+│   ├── ingress.bicep              ← ILB, App Gateway WAF v2 (conditional)
+│   ├── acr.bicep                  ← Container Registry + Private Endpoint
+│   └── ai.bicep                   ← AI Foundry endpoint config (conditional)
+├── scripts/
+│   ├── seed-acr.sh                ← Copies images from Meridius source ACR
+│   ├── configure-aks.sh           ← Helm install, namespace creation, NGINX
+│   └── validate-deployment.sh     ← Post-deployment health checks
+├── helm/
+│   ├── control-center/            ← CC frontend + backend + ES + MCP + analytics
+│   ├── commerce-gateway/          ← CG API + adapters + OMS + pricing + tax
+│   └── ai-services/               ← Vision AI inference, ticketing agent
+└── porter.yaml                    ← CNAB bundle definition</code></pre>
+
+<h3>2.4 What the Template Creates (Parameter-Driven)</h3>
+
+<p>The retailer fills in the Portal wizard, and the template creates everything. Key parameters:</p>
+
+<table>
+<thead>
+<tr><th>Parameter</th><th>Type</th><th>Options</th></tr>
+</thead>
+<tbody>
+<tr><td>Region</td><td>dropdown</td><td>Central US, East US 2, West US 2, etc.</td></tr>
+<tr><td>Environment size</td><td>dropdown</td><td>Demo / Production</td></tr>
+<tr><td>Enable AI Chatbot</td><td>boolean</td><td>Creates App Gateway WAF v2 + AI Foundry endpoint if true</td></tr>
+<tr><td>Enable Vision AI</td><td>boolean</td><td>Creates ML workspace + GPU compute if true</td></tr>
+<tr><td>Commerce engine</td><td>dropdown</td><td>Shopify / Medusa / SAP / Oracle / Custom</td></tr>
+<tr><td>Admin email / IdP</td><td>string</td><td>For Entra ID configuration</td></tr>
+<tr><td>Store count (initial)</td><td>number</td><td>Sizes Update Manager, Arc, Defender licensing</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>3. Team &amp; Resource Requirements</h2>
+
+<h3>3.1 Meridius Engineering Team (Build Side)</h3>
+
+<table>
+<thead>
+<tr><th>Role</th><th>FTE</th><th>Duration</th><th>Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Cloud Infrastructure Engineer</strong> (Bicep/ARM)</td><td>1–2</td><td>Weeks 1–10</td><td>Author all Bicep modules, createUiDefinition.json, CNAB bundle; automate Private Endpoints, DNS, NSGs</td></tr>
+<tr><td><strong>DevOps / Platform Engineer</strong></td><td>1–2</td><td>Weeks 1–14</td><td>CI/CD pipeline (GitHub Actions or Azure DevOps) to build images, run tests, package CNAB bundle, publish to Partner Center; Helm chart authoring</td></tr>
+<tr><td><strong>AKS / Kubernetes Engineer</strong></td><td>1</td><td>Weeks 2–10</td><td>AKS cluster design (node pools, autoscaler, workload identity, network policies, NGINX Ingress config), Helm charts, pod security</td></tr>
+<tr><td><strong>Application Developer(s)</strong></td><td>2–3</td><td>Weeks 2–12</td><td>Adapt Spring Boot / React / Java workloads for AKS; wire Azure PaaS SDKs (Event Hubs Kafka client, PostgreSQL from Key Vault, Managed Identity auth)</td></tr>
+<tr><td><strong>AI/ML Engineer</strong></td><td>1</td><td>Weeks 6–12</td><td>Azure ML workspace, RFDetr training pipeline on A100's, AI Foundry endpoint for Qwen3-32B, MCP Server integration</td></tr>
+<tr><td><strong>Security / Compliance Lead</strong></td><td>0.5</td><td>Weeks 1–14</td><td>Entra ID federation, RBAC design, Key Vault policy, Defender onboarding, PCI-DSS scoping for Azure</td></tr>
+<tr><td><strong>QA / Test Engineer</strong></td><td>1</td><td>Weeks 6–14</td><td>End-to-end testing of Marketplace deployment, Helm chart validation, store-edge integration testing</td></tr>
+</tbody>
+</table>
+
+<p><strong>Total: ~8–10 engineers for ~14 weeks</strong>, tapering to 3–4 after Marketplace certification.</p>
+
+<h3>3.2 Microsoft Support (Available Resources)</h3>
+
+<table>
+<thead>
+<tr><th>Resource</th><th>How to Engage</th><th>What They Help With</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>FastTrack for Azure</strong></td><td>Nominate via Microsoft account team</td><td>Architecture review, AKS best practices, Marketplace guidance — no cost</td></tr>
+<tr><td><strong>Azure Marketplace Onboarding Team</strong></td><td>Via Partner Center portal</td><td>CNAB bundle validation, createUiDefinition review, certification process</td></tr>
+<tr><td><strong>ISV Success Program</strong></td><td>Via Microsoft partner manager</td><td>GTM support, co-sell listing, customer referrals</td></tr>
+<tr><td><strong>Microsoft AI Cloud Partner Program</strong></td><td>Enroll at partner.microsoft.com</td><td>Technical benefits, Azure credits for dev/test, priority support</td></tr>
+<tr><td><strong>Azure Support (Premier/Unified)</strong></td><td>Customer-side procurement</td><td>Production support SLA, break-fix, advisory hours</td></tr>
+</tbody>
+</table>
+
+<h3>3.3 Retailer (Customer) Team — Per Deployment</h3>
+
+<table>
+<thead>
+<tr><th>Role</th><th>Effort</th><th>Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Cloud Admin</strong></td><td>2–3 days</td><td>Create Azure subscription, set quotas, approve resource creation, configure ExpressRoute/VPN if needed</td></tr>
+<tr><td><strong>Identity Admin</strong></td><td>1–2 days</td><td>Entra ID tenant setup, user provisioning, IdP federation (Okta if applicable)</td></tr>
+<tr><td><strong>Network Admin</strong></td><td>1–2 days</td><td>Firewall rules for outbound ACR access from stores, Private Endpoint DNS forwarding</td></tr>
+<tr><td><strong>Store Ops</strong></td><td>Per-store (2–4 hrs)</td><td>Physical rack imaging, register network boot validation, Arc agent installation</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>4. Phased Implementation Plan</h2>
+
+<div class="phase-header">Phase 0 — Foundation (Weeks 1–2)</div>
+<div class="phase-body">
+<p><strong>Goal:</strong> Azure engineering environment set up, team ramped, architecture validated.</p>
+<table>
+<thead>
+<tr><th>#</th><th>Task</th><th>Owner</th><th>Deliverable</th></tr>
+</thead>
+<tbody>
+<tr><td>0.1</td><td>Provision Meridius engineering Azure subscription (dev/test)</td><td>Cloud Infra</td><td>Subscription with contributor access for team</td></tr>
+<tr><td>0.2</td><td>Set up CI/CD pipeline (GitHub Actions or Azure DevOps)</td><td>DevOps</td><td>Pipeline repo with build/test/package stages</td></tr>
+<tr><td>0.3</td><td>Create Bicep module skeleton (networking, AKS, data, security)</td><td>Cloud Infra</td><td>Initial <code>meridius-marketplace/</code> repo structure</td></tr>
+<tr><td>0.4</td><td>Enroll in Microsoft Partner Center</td><td>DevOps / PM</td><td>Publisher account for Azure Marketplace</td></tr>
+<tr><td>0.5</td><td>Architecture design review with Microsoft FastTrack</td><td>All</td><td>Validated architecture doc, any adjustments</td></tr>
+<tr><td>0.6</td><td>Set up shared dev AKS cluster for application testing</td><td>AKS Engineer</td><td>Working AKS + PostgreSQL + Event Hubs in dev</td></tr>
+<tr><td>0.7</td><td>Containerize any remaining non-containerized workloads</td><td>App Devs</td><td>All services build as Docker images</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="phase-header">Phase 1 — IaC &amp; Application Adaptation (Weeks 3–8)</div>
+<div class="phase-body">
+<p><strong>Goal:</strong> All Bicep templates working end-to-end, applications running on AKS.</p>
+
+<h4>Track A — Infrastructure as Code</h4>
+<table>
+<thead>
+<tr><th>#</th><th>Task</th><th>Owner</th><th>Deliverable</th></tr>
+</thead>
+<tbody>
+<tr><td>1.1</td><td>Author <code>networking.bicep</code> — VNet, subnets, NSGs, Private DNS Zones</td><td>Cloud Infra</td><td>Deploys isolated network with correct CIDR ranges</td></tr>
+<tr><td>1.2</td><td>Author <code>aks.bicep</code> — Cluster, 3 node pools, workload identity, autoscaler</td><td>Cloud Infra + AKS Eng</td><td>AKS cluster with system/workload/memory-optimized pools</td></tr>
+<tr><td>1.3</td><td>Author <code>data.bicep</code> — PostgreSQL × 2, Event Hubs, Storage</td><td>Cloud Infra</td><td>Both DBs with Private Endpoints, HA toggle, TimescaleDB extension</td></tr>
+<tr><td>1.4</td><td>Author <code>security.bicep</code> — Key Vault, Managed Identities, Defender</td><td>Cloud Infra + Security</td><td>Zero-trust config, workload identity federation</td></tr>
+<tr><td>1.5</td><td>Author <code>observability.bicep</code> — Log Analytics, App Insights, Grafana</td><td>Cloud Infra</td><td>Unified monitoring with diagnostic settings on all resources</td></tr>
+<tr><td>1.6</td><td>Author <code>ingress.bicep</code> — ILB + App Gateway WAF (conditional)</td><td>Cloud Infra</td><td>Parameterized: WAF only deploys when chatbot = true</td></tr>
+<tr><td>1.7</td><td>Author <code>acr.bicep</code> — Premium ACR + Private Endpoint</td><td>Cloud Infra</td><td>Geo-replication ready, private link</td></tr>
+<tr><td>1.8</td><td>Author <code>ai.bicep</code> — AI Foundry endpoint (conditional)</td><td>Cloud Infra + AI Eng</td><td>Serverless Qwen3-32B endpoint provisioning</td></tr>
+<tr><td>1.9</td><td>Build <code>mainTemplate.json</code> (compile from Bicep) + <code>createUiDefinition.json</code></td><td>Cloud Infra + DevOps</td><td>Full end-to-end deployment from Portal wizard</td></tr>
+<tr><td>1.10</td><td>Automated deployment testing (deploy/destroy/redeploy)</td><td>DevOps + QA</td><td>CI pipeline that deploys template to a test subscription on every PR</td></tr>
+</tbody>
+</table>
+
+<h4>Track B — Application Modernization for AKS</h4>
+<table>
+<thead>
+<tr><th>#</th><th>Task</th><th>Owner</th><th>Deliverable</th></tr>
+</thead>
+<tbody>
+<tr><td>1.11</td><td>Create Helm charts — Control Center (frontend, backend, ES, MCP, analytics, messaging)</td><td>DevOps + App Devs</td><td><code>helm/control-center/</code> with values.yaml for env-specific config</td></tr>
+<tr><td>1.12</td><td>Create Helm charts — Commerce Gateway (CG API, adapters, OMS, pricing, tax, promotions)</td><td>DevOps + App Devs</td><td><code>helm/commerce-gateway/</code></td></tr>
+<tr><td>1.13</td><td>Create Helm charts — AI Services (Vision AI inference, ticketing agent)</td><td>DevOps + AI Eng</td><td><code>helm/ai-services/</code></td></tr>
+<tr><td>1.14</td><td>Wire Spring Boot apps to Azure services via Managed Identity</td><td>App Devs</td><td>No hardcoded credentials; Key Vault references for connection strings</td></tr>
+<tr><td>1.15</td><td>Switch Kafka producer/consumer config to Event Hubs Kafka endpoint</td><td>App Devs</td><td>Tested with Kafka API on Event Hubs Standard</td></tr>
+<tr><td>1.16</td><td>Configure PostgreSQL connection pooling (PgBouncer sidecar or built-in)</td><td>App Devs + AKS Eng</td><td>Connection pooling for HA failover scenarios</td></tr>
+<tr><td>1.17</td><td>Configure Elasticsearch cluster on memory-optimized node pool</td><td>AKS Eng</td><td>ES StatefulSet with node affinity for E4s_v5 pool, PVCs for data</td></tr>
+<tr><td>1.18</td><td>Wire NGINX Ingress + TLS termination + Internal LB</td><td>AKS Eng</td><td>All internal traffic routed via NGINX, TLS certs from Key Vault</td></tr>
+<tr><td>1.19</td><td>Wire App Gateway WAF → NGINX Ingress for chatbot path</td><td>AKS Eng</td><td><code>/chatbot/*</code> routed via public App GW → backend pool on AKS</td></tr>
+<tr><td>1.20</td><td>Implement health probes (liveness, readiness, startup) for all pods</td><td>App Devs</td><td>Kubernetes-native health checks for all Helm charts</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="phase-header">Phase 2 — CNAB Bundle &amp; Marketplace Certification (Weeks 8–12)</div>
+<div class="phase-body">
+<p><strong>Goal:</strong> Deployable Marketplace listing that passes Microsoft certification.</p>
+<table>
+<thead>
+<tr><th>#</th><th>Task</th><th>Owner</th><th>Deliverable</th></tr>
+</thead>
+<tbody>
+<tr><td>2.1</td><td>Author <code>porter.yaml</code> CNAB bundle manifest</td><td>DevOps</td><td>Bundle that packages ARM templates + Helm charts + ACR seed script</td></tr>
+<tr><td>2.2</td><td>Build CNAB bundle CI pipeline (build bundle → push to staging)</td><td>DevOps</td><td>Automated bundle build on every release tag</td></tr>
+<tr><td>2.3</td><td>Create ACR seed script — copies images from Meridius source ACR to customer ACR</td><td>DevOps</td><td><code>scripts/seed-acr.sh</code> using <code>az acr import</code></td></tr>
+<tr><td>2.4</td><td>Author Marketplace listing content (description, screenshots, support URL, pricing model)</td><td>PM + Marketing</td><td>Partner Center listing draft</td></tr>
+<tr><td>2.5</td><td>Submit to Partner Center for technical validation</td><td>DevOps + PM</td><td>Pre-certification test deployment in Microsoft's test environment</td></tr>
+<tr><td>2.6</td><td>Address certification feedback, iterate</td><td>All</td><td>Typically 1–3 rounds of feedback over 2–3 weeks</td></tr>
+<tr><td>2.7</td><td>Create deployment runbook (step-by-step for customer cloud admins)</td><td>Cloud Infra</td><td>Customer-facing doc: prerequisites, deployment, post-deployment validation</td></tr>
+<tr><td>2.8</td><td>Create operations runbook (day-2: scaling, patching, backup, DR)</td><td>Cloud Infra + AKS Eng</td><td>Customer-facing doc: how to operate the deployed solution</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="phase-header">Phase 3 — Store Edge &amp; AI Integration (Weeks 8–12, parallel)</div>
+<div class="phase-body">
+<p><strong>Goal:</strong> Store-side image pull from ACR, Arc enrollment, AI pipelines working.</p>
+<table>
+<thead>
+<tr><th>#</th><th>Task</th><th>Owner</th><th>Deliverable</th></tr>
+</thead>
+<tbody>
+<tr><td>3.1</td><td>Configure store rack K3s to pull images from Customer ACR (token auth or SP)</td><td>DevOps + Edge Eng</td><td>K3s imagePullSecrets pointing to customer's ACR</td></tr>
+<tr><td>3.2</td><td>Configure register cloud boot pull as ACR fallback</td><td>DevOps + Edge Eng</td><td>Registers can pull directly from ACR if rack is updating</td></tr>
+<tr><td>3.3</td><td>Create Azure Arc onboarding script for store servers</td><td>Cloud Infra</td><td><code>arc-enroll.sh</code> — installs Arc agent, connects to Azure tenant</td></tr>
+<tr><td>3.4</td><td>Configure Update Manager policies for Arc-enrolled servers</td><td>Cloud Infra</td><td>Automated OS patching schedule (maintenance window)</td></tr>
+<tr><td>3.5</td><td>Set up Azure ML workspace + RFDetr training pipeline</td><td>AI Eng</td><td>Blob Storage → ML datastore → training pipeline → model registry</td></tr>
+<tr><td>3.6</td><td>Deploy Qwen3-32B serverless endpoint on AI Foundry</td><td>AI Eng</td><td>MCP Server configured to call endpoint for chatbot queries</td></tr>
+<tr><td>3.7</td><td>Create Grafana dashboard templates (store health, register status, fleet overview)</td><td>App Devs + Cloud Infra</td><td>Pre-built dashboards deployed with Helm chart</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="phase-header">Phase 4 — Pilot Deployment &amp; Go-Live (Weeks 12–16)</div>
+<div class="phase-body">
+<p><strong>Goal:</strong> First retailer live on Azure.</p>
+<table>
+<thead>
+<tr><th>#</th><th>Task</th><th>Owner</th><th>Deliverable</th></tr>
+</thead>
+<tbody>
+<tr><td>4.1</td><td>Provision pilot retailer Azure subscription</td><td>Customer Cloud Admin</td><td>Subscription with quotas approved (especially GPU for Vision AI)</td></tr>
+<tr><td>4.2</td><td>Deploy via Marketplace listing (or pre-release private listing)</td><td>Meridius + Customer</td><td>All Azure resources created via Solution Template</td></tr>
+<tr><td>4.3</td><td>Configure commerce engine adapters (Shopify/Medusa/SAP credentials)</td><td>App Devs + Customer</td><td>Live connection to customer's commerce backend</td></tr>
+<tr><td>4.4</td><td>Configure Entra ID / IdP federation</td><td>Security Lead + Customer Identity Admin</td><td>SSO working for Control Center access</td></tr>
+<tr><td>4.5</td><td>Deploy pilot stores (3–5 stores)</td><td>Meridius Field Ops + Customer Store Ops</td><td>K3s imaging, Arc enrollment, register boot validation</td></tr>
+<tr><td>4.6</td><td>End-to-end integration testing (checkout → Event Hubs → Control Center → Grafana)</td><td>QA + App Devs</td><td>Full transaction flow validated</td></tr>
+<tr><td>4.7</td><td>Performance &amp; load testing</td><td>QA</td><td>AKS autoscaler validated, connection pooling under load</td></tr>
+<tr><td>4.8</td><td>Security review (penetration test, Defender alerts review)</td><td>Security Lead</td><td>No critical findings</td></tr>
+<tr><td>4.9</td><td>Go-live sign-off</td><td>All stakeholders</td><td>Pilot stores processing live transactions</td></tr>
+<tr><td>4.10</td><td>Fleet rollout plan (remaining stores at 2–4/day)</td><td>Meridius Field Ops</td><td>Automated Arc enrollment + image distribution at scale</td></tr>
+</tbody>
+</table>
+</div>
+
+<hr />
+
+<h2>5. Marketplace Certification — What to Expect</h2>
+
+<table>
+<thead>
+<tr><th>Step</th><th>Who</th><th>Duration</th><th>Details</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>1. Partner Center enrollment</strong></td><td>Meridius PM</td><td>1–3 days</td><td>Create publisher profile, accept agreements</td></tr>
+<tr><td><strong>2. Create offer</strong></td><td>Meridius PM + DevOps</td><td>1 day</td><td>Offer type = "Azure Application — Solution Template"</td></tr>
+<tr><td><strong>3. Upload technical artifacts</strong></td><td>DevOps</td><td>1 day</td><td>mainTemplate.json, createUiDefinition.json, nested templates</td></tr>
+<tr><td><strong>4. Automated validation</strong></td><td>Microsoft (automated)</td><td>1–2 days</td><td>ARM template linting, resource API version checks, security policy checks</td></tr>
+<tr><td><strong>5. Manual review</strong></td><td>Microsoft certification team</td><td>5–10 business days</td><td>Deploys template in test subscription, validates UX, security, billing</td></tr>
+<tr><td><strong>6. Feedback &amp; iteration</strong></td><td>Meridius DevOps</td><td>3–7 days</td><td>Typically 1–3 rounds (common: missing resource locks, incorrect API versions, UX wording)</td></tr>
+<tr><td><strong>7. Go-live</strong></td><td>Microsoft</td><td>1 day</td><td>Listing appears in Azure Marketplace</td></tr>
+</tbody>
+</table>
+
+<p><strong>Total certification time: ~3–4 weeks.</strong> Can overlap with Phase 3 (store edge work).</p>
+
+<p><strong>Private offers:</strong> While public certification is in progress, Meridius can use <strong>Private Plans</strong> in Partner Center to deploy to specific retailer tenants without waiting for public listing.</p>
+
+<hr />
+
+<h2>6. CI/CD Pipeline Architecture</h2>
+
+<pre><code>Developer pushes code
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│  GitHub Actions / Azure DevOps Pipeline          │
+│                                                   │
+│  Stage 1: BUILD                                   │
+│  ├─ Build Docker images (Spring Boot, React, etc.)│
+│  ├─ Run unit tests                                │
+│  ├─ Push images to Meridius internal ACR          │
+│  └─ Tag with semantic version                     │
+│                                                   │
+│  Stage 2: IaC VALIDATE                            │
+│  ├─ Compile Bicep → ARM                           │
+│  ├─ Run ARM what-if (dry run)                     │
+│  └─ Validate createUiDefinition.json              │
+│                                                   │
+│  Stage 3: INTEGRATION TEST                        │
+│  ├─ Deploy to test subscription (ephemeral)       │
+│  ├─ Helm install onto test AKS                    │
+│  ├─ Run smoke tests (health endpoints, DB conn)   │
+│  └─ Tear down (cost control)                      │
+│                                                   │
+│  Stage 4: PACKAGE                                 │
+│  ├─ Build CNAB bundle (porter build)              │
+│  └─ Push bundle to staging ACR                    │
+│                                                   │
+│  Stage 5: PUBLISH (manual gate)                   │
+│  ├─ Upload to Partner Center                      │
+│  └─ Trigger certification                         │
+└─────────────────────────────────────────────────┘</code></pre>
+
+<hr />
+
+<h2>7. Key Risks &amp; Mitigations</h2>
+
+<table>
+<thead>
+<tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>GPU quota not approved in time</strong></td><td>Medium</td><td>Vision AI delayed</td><td>Request GPU quota (NC A100) in target region immediately in Week 1; have fallback region identified</td></tr>
+<tr><td><strong>Marketplace certification longer than expected</strong></td><td>Medium</td><td>Delays first customer deployment</td><td>Use Private Plans for pilot customer; start certification early (Week 8, not Week 12)</td></tr>
+<tr><td><strong>Elasticsearch stability on AKS</strong></td><td>Medium</td><td>Control Center degraded</td><td>Proper resource requests/limits, PVC sizing, anti-affinity rules; consider managed Elastic Cloud on Azure as future option</td></tr>
+<tr><td><strong>Event Hubs Kafka API compatibility gaps</strong></td><td>Low</td><td>Kafka producer/consumer changes needed</td><td>Test early (Week 3–4) with actual Meridius Kafka client config; known gaps: no exactly-once semantics, no compacted topics</td></tr>
+<tr><td><strong>PCI-DSS scope review lengthens timeline</strong></td><td>Medium</td><td>Go-live delayed</td><td>Start PCI scoping in Phase 0; Azure's PCI DSS compliance covers infra layer, but application-layer compliance is Meridius's responsibility</td></tr>
+<tr><td><strong>Store network blocks ACR pull</strong></td><td>Medium</td><td>Stores can't update software</td><td>Document outbound firewall rules needed (ACR endpoints on 443); provide offline bundle as fallback</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>8. Microsoft Engagement Asks</h2>
+
+<p>To accelerate this plan, Meridius should request the following from their Microsoft account team:</p>
+
+<table>
+<thead>
+<tr><th>Ask</th><th>Benefit</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>FastTrack for Azure nomination</strong></td><td>Free architecture review + AKS/Marketplace guidance sessions</td></tr>
+<tr><td><strong>ISV Success Program enrollment</strong></td><td>Azure credits for dev/test, priority support, GTM support</td></tr>
+<tr><td><strong>Marketplace Onboarding Office Hours</strong></td><td>Direct access to certification team for pre-submission review — avoids failed cert rounds</td></tr>
+<tr><td><strong>GPU Quota Pre-Approval</strong></td><td>NC A100 quota in Central US (and backup region) approved before Phase 3</td></tr>
+<tr><td><strong>Azure Expert MSP referral</strong> (if needed)</td><td>If Meridius doesn't have Azure IaC expertise in-house, Microsoft can connect them with a partner for the Bicep/ARM work</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>9. Summary Timeline</h2>
+
+<pre><code>Week  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16
+      ├──┤                                                      Phase 0: Foundation
+         ├─────────────────────────┤                            Phase 1: IaC + App (Track A &amp; B)
+                                    ├──────────────────┤        Phase 2: CNAB + Certification
+                                    ├──────────────────┤        Phase 3: Store Edge + AI (parallel)
+                                                         ├─────────┤  Phase 4: Pilot + Go-Live
+      ▲                          ▲                    ▲         ▲
+      │                          │                    │         │
+   Kickoff                  Template               Cert     Pilot
+                            works E2E             complete   go-live</code></pre>
+
+<p><strong>Total estimated effort:</strong> ~8–10 engineers × 14–16 weeks<br />
+<strong>First retailer pilot go-live:</strong> Week 14–16 from kickoff<br />
+<strong>Fleet rollout:</strong> Ongoing from Week 16 at 2–4 stores/day</p>
+
+<hr />
+
+<p><em>This plan assumes Meridius's existing application workloads are already containerized and running on K3s. The work is primarily about packaging for Azure (IaC + Marketplace) and wiring Azure PaaS services, not rewriting applications.</em></p>
+
+</body>
+</html>

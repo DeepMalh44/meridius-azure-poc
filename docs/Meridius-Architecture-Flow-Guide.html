@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridius Platform — Architecture Flow Guide</title>
+<style>
+  :root {
+    --ms-blue: #0078d4;
+    --ms-dark: #1b1b1b;
+    --ms-gray: #605e5c;
+    --ms-light: #f3f2f1;
+    --ms-border: #d2d0ce;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+    color: var(--ms-dark);
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 32px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--ms-blue);
+    border-bottom: 3px solid var(--ms-blue);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ms-dark);
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ms-border);
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ms-gray);
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ms-blue);
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  p {
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  ul, ol {
+    margin: 8px 0 16px 24px;
+    font-size: 14px;
+  }
+  li { margin-bottom: 4px; }
+  strong { font-weight: 600; }
+  hr {
+    border: none;
+    border-top: 1px solid var(--ms-border);
+    margin: 28px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px 0;
+    font-size: 13px;
+  }
+  thead {
+    background: var(--ms-blue);
+    color: #fff;
+  }
+  th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ms-border);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) {
+    background: var(--ms-light);
+  }
+  tbody tr:hover {
+    background: #e8f4fd;
+  }
+  blockquote {
+    border-left: 4px solid var(--ms-blue);
+    background: #f0f6ff;
+    padding: 12px 16px;
+    margin: 12px 0 16px 0;
+    font-size: 13px;
+    color: var(--ms-gray);
+  }
+  blockquote p { margin: 0; }
+  code {
+    background: var(--ms-light);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 12.5px;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    margin: 12px 0 20px 0;
+    white-space: pre;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+  em {
+    font-style: italic;
+    color: var(--ms-gray);
+  }
+  @media print {
+    body { padding: 20px; font-size: 11px; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 17px; break-before: auto; }
+    table { font-size: 10px; page-break-inside: avoid; }
+    pre { font-size: 9px; white-space: pre-wrap; }
+    blockquote { background: #f5f5f5; }
+    thead { background: #333; color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tbody tr:nth-child(even) { background: #f5f5f5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Meridius Platform — Architecture Flow Guide</h1>
+<p><strong>For:</strong> Customers new to Azure<br />
+<strong>Date:</strong> April 17, 2026<br />
+<strong>Purpose:</strong> Plain-language walkthrough of how the Meridius platform is deployed, how software reaches your stores, and how data flows between your stores and the cloud.</p>
+
+<hr />
+
+<h2>What Is This Platform?</h2>
+
+<p>Meridius is a <strong>checkout and commerce platform</strong> that runs in two places:</p>
+
+<ol>
+<li><strong>In the cloud</strong> (Azure) — the "brain" that manages configuration, AI features, dashboards, and data</li>
+<li><strong>In each store</strong> (on-premises) — the actual registers, pricing engines, and checkout software that your store associates and customers interact with</li>
+</ol>
+
+<p>Everything runs inside <strong>your own Azure subscription</strong>. Meridius does not see or touch your data — it simply provides the software. Think of it like buying an appliance that you install in your own home.</p>
+
+<hr />
+
+<h2>How Does the Software Get Into My Azure Subscription?</h2>
+
+<p>This is the <strong>Azure Marketplace</strong> model. Here's how it works, step by step:</p>
+
+<pre><code>┌─────────────────────────────────┐
+│  Meridius Engineering (their    │
+│  own, separate environment)     │
+│                                 │
+│  1. Developers write code       │
+│  2. Build Pipeline creates      │
+│     container images            │
+│  3. Images are packaged into    │
+│     a "CNAB bundle" (think of   │
+│     it as a shipping box with   │
+│     everything inside)          │
+│  4. Bundle is published to      │
+│     Azure Marketplace via       │
+│     Microsoft Partner Center    │
+└──────────────┬──────────────────┘
+               │
+               ▼
+┌─────────────────────────────────┐
+│  Azure Marketplace              │
+│  (Microsoft-hosted, public)     │
+│                                 │
+│  Like an "app store" for Azure. │
+│  The Meridius listing appears   │
+│  here. When you click "Deploy", │
+│  the images are copied into     │
+│  YOUR subscription.             │
+└──────────────┬──────────────────┘
+               │  You click "Deploy" in Azure Portal
+               ▼
+┌─────────────────────────────────┐
+│  Your Azure Subscription        │
+│  (Central US region)            │
+│                                 │
+│  A "Solution Template" (a       │
+│  recipe) runs automatically     │
+│  and creates all the Azure      │
+│  resources you need:            │
+│                                 │
+│  • AKS cluster (runs software)  │
+│  • Databases (PostgreSQL)       │
+│  • Messaging (Event Hubs)       │
+│  • Networking (VNet, firewall)  │
+│  • Security (Key Vault, Entra)  │
+│  • Monitoring (Grafana, logs)   │
+│  • Your own Container Registry  │
+│    (ACR) — a private copy of    │
+│    all the Meridius images      │
+│                                 │
+│  This takes about 2-4 hours.    │
+└─────────────────────────────────┘</code></pre>
+
+<p><strong>Key point:</strong> Meridius never has access to your subscription after deployment. All data (including PII and PCI card data) stays in your tenant.</p>
+
+<hr />
+
+<h2>How Do Software Images Reach the Store?</h2>
+
+<p>This is one of the most important flows to understand. Your stores have physical server hardware (the "rack") and checkout registers. Both need software to run. Here's how that software gets from Azure to your stores:</p>
+
+<pre><code>┌──────────────────────┐
+│  Azure Marketplace   │
+│  (Meridius images)   │
+└──────────┬───────────┘
+           │ At deployment time, images
+           │ are copied into your subscription
+           ▼
+┌──────────────────────┐
+│  Your Customer ACR   │
+│  (Container Registry │
+│   in YOUR Azure      │
+│   subscription)      │
+│                      │
+│  This is the SINGLE  │
+│  SOURCE OF TRUTH for │
+│  all images          │
+└──┬───────┬───────┬───┘
+   │       │       │
+   │       │       │
+   ▼       ▼       ▼
+ ┌───┐  ┌─────┐  ┌───────────────────┐
+ │AKS│  │Store│  │Store Registers    │
+ │   │  │Rack │  │(checkout machines)│
+ └───┘  └─────┘  └───────────────────┘
+
+ Cloud    On-Prem   On-Prem
+ apps     server    terminals</code></pre>
+
+<h3>Three destinations, one source:</h3>
+
+<ol>
+<li><strong>AKS cluster</strong> (cloud) — Pulls images from your ACR to run cloud workloads like Control Center, Commerce Gateway, and AI services. This is standard Kubernetes behavior.</li>
+<li><strong>Store Server Rack</strong> (in-store hardware) — The physical servers in your store pull container images from the same Customer ACR over the internet (outbound HTTPS). This means when Meridius publishes a software update to the Marketplace, and you approve it, the new images flow into your ACR, and your store racks pull the updated images automatically.</li>
+<li><strong>Registers</strong> (checkout machines) — Your checkout terminals can also pull deployable images directly from Customer ACR. Alternatively, they get their software from the store server rack via network boot (the traditional approach). The cloud pull option provides a fallback if the store rack is being updated.</li>
+</ol>
+
+<h3>What does the store need to make this work?</h3>
+
+<ul>
+<li><strong>Outbound internet access</strong> (HTTPS on port 443) to reach your Azure Container Registry</li>
+<li>The store network does NOT need to be "opened up" to inbound traffic from the internet — the store hardware initiates the pull (outbound only)</li>
+</ul>
+
+<hr />
+
+<h2>Data Flows — What Talks to What?</h2>
+
+<p>Here are the main data flows in the system, explained simply:</p>
+
+<h3>Flow ① ② — Admin Portal Access</h3>
+
+<pre><code>Store Manager or Platform Admin
+        │
+        ├──① Opens Android Chatbot App (for voice queries)
+        │
+        └──② Opens Control Center portal (web browser)
+               │
+               ▼
+         Internal Load Balancer → AKS → Control Center</code></pre>
+
+<p>The Control Center is a web application where store managers configure rules, view dashboards, and manage the fleet. It's accessed over HTTPS through an internal load balancer (not exposed to the public internet).</p>
+
+<h3>Flow ③ ④ ⑤ — AI Voice Chatbot</h3>
+
+<p>This is the flow when a store manager asks a question using the Android voice chatbot:</p>
+
+<pre><code>Android App  ──③──▶  App Gateway WAF v2  ──④──▶  MCP Server (on AKS)  ──⑤──▶  Azure AI Foundry
+ (voice query)      (firewall + identity         (processes the query)         (Qwen3-32B model
+                     check via Entra ID)                                        generates answer)</code></pre>
+
+<ul>
+<li><strong>Step ③:</strong> The Android app sends the voice query over HTTPS to the App Gateway. The App Gateway is a <strong>web application firewall</strong> — it inspects the traffic for threats and verifies the user's identity using <strong>Entra ID</strong> (Microsoft's identity service, like a bouncer at a door).</li>
+<li><strong>Step ④:</strong> Once verified, the request passes through to the <strong>MCP Server</strong> running on AKS inside the cluster. The MCP Server knows how to search Elasticsearch for relevant store data.</li>
+<li><strong>Step ⑤:</strong> The MCP Server calls <strong>Azure AI Foundry</strong>, which hosts the <strong>Qwen3-32B</strong> language model. The model generates a response, which flows back through the same path to the Android app.</li>
+</ul>
+
+<p><strong>Why this matters:</strong> The chatbot is the only component exposed to the public internet, and it's protected by both a firewall (WAF) and identity verification (Entra). Everything else stays internal.</p>
+
+<h3>Flow ⑥ — Store-to-Cloud Data Sync (Orders &amp; Transactions)</h3>
+
+<pre><code>Store Server Rack  ──⑥──▶  Azure Event Hubs (Kafka API)
+(local Kafka)               (cloud message queue)</code></pre>
+
+<p>Your store processes transactions locally (it works even if the internet goes down). When connectivity is available, the store's local Kafka system syncs order data up to <strong>Azure Event Hubs</strong> in the cloud. Event Hubs keeps a <strong>3-day buffer</strong>, so even if a store is offline for up to 3 days, no data is lost — it catches up when reconnected.</p>
+
+<h3>Flow ⑦ — Fleet Management (Store → Cloud)</h3>
+
+<pre><code>Azure Arc Agent  ──⑦──▶  Azure Arc (fleet control plane)
+(1 per store)              (centralized management)</code></pre>
+
+<p>Each store has a small <strong>Azure Arc agent</strong> installed. This agent periodically sends health and telemetry data to Azure — things like "is the server running?", "how much disk space is left?", "are all services healthy?". Your IT team can see all stores on a single dashboard in the Azure portal, powered by <strong>Managed Grafana</strong>.</p>
+
+<h3>Flow ⑩ — Commerce Engine Integration</h3>
+
+<pre><code>Commerce Gateway (on AKS)  ──⑩──▶  Your Enterprise Systems
+(Engine Adapters)                   (SAP / Oracle / Shopify / OMS / etc.)</code></pre>
+
+<p>The Commerce Gateway has <strong>pluggable adapters</strong> that connect to whatever commerce systems you already use (SAP, Oracle, Shopify, etc.). These are REST API calls. The adapters are pre-built by Meridius — you just provide connection credentials.</p>
+
+<hr />
+
+<h2>What Gets Deployed Automatically vs. What's Manual?</h2>
+
+<table>
+<thead>
+<tr>
+<th>Deployed automatically by the Solution Template</th>
+<th>Set up separately</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AKS cluster with all namespaces</td>
+<td>Azure ML GPU compute (needs quota approval from Microsoft)</td>
+</tr>
+<tr>
+<td>Event Hubs (Kafka)</td>
+<td>Entra ID tenant configuration / federation with your IdP</td>
+</tr>
+<tr>
+<td>PostgreSQL databases (Commerce + TSDB)</td>
+<td>Defender for Containers / Servers (subscription-level enablement)</td>
+</tr>
+<tr>
+<td>Storage Account</td>
+<td>Azure Arc enrollment of each store (done per-store during rollout)</td>
+</tr>
+<tr>
+<td>VNet + Private Endpoints + DNS</td>
+<td>Your enterprise system connectivity (VPN, ExpressRoute, etc.)</td>
+</tr>
+<tr>
+<td>Internal Load Balancer + NGINX Ingress</td>
+<td>Commerce engine adapter credentials (Shopify/SAP API keys)</td>
+</tr>
+<tr>
+<td>App Gateway WAF v2</td>
+<td>Physical store hardware imaging</td>
+</tr>
+<tr>
+<td>Customer ACR (seeded with images)</td>
+<td></td>
+</tr>
+<tr>
+<td>Key Vault (secrets store)</td>
+<td></td>
+</tr>
+<tr>
+<td>Managed Identities</td>
+<td></td>
+</tr>
+<tr>
+<td>Managed Grafana (dashboards)</td>
+<td></td>
+</tr>
+<tr>
+<td>Azure Monitor + Log Analytics</td>
+<td></td>
+</tr>
+<tr>
+<td>AI Foundry endpoint configuration</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>In simple terms:</strong> You click "Deploy" in Azure Marketplace, and 2-4 hours later you have a fully working cloud environment. The manual work is mostly about connecting it to your existing systems and rolling out to physical stores.</p>
+
+<hr />
+
+<h2>Security Summary (Plain Language)</h2>
+
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>How it's handled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Who can access the system?</strong></td>
+<td>Microsoft Entra ID (MFA + role-based access). Only authorized admins can log in.</td>
+</tr>
+<tr>
+<td><strong>Is the chatbot safe from hackers?</strong></td>
+<td>App Gateway WAF v2 inspects all traffic for attacks. Entra ID verifies every user.</td>
+</tr>
+<tr>
+<td><strong>Where is my data?</strong></td>
+<td>In YOUR Azure subscription, in the Central US region. Meridius cannot see it.</td>
+</tr>
+<tr>
+<td><strong>How do services talk to each other?</strong></td>
+<td>Using Managed Identities — no passwords stored anywhere. Azure handles authentication automatically.</td>
+</tr>
+<tr>
+<td><strong>Are secrets (API keys, etc.) safe?</strong></td>
+<td>Stored in Azure Key Vault — encrypted, access-controlled, audit-logged.</td>
+</tr>
+<tr>
+<td><strong>What about the store servers?</strong></td>
+<td>Optional Microsoft Defender for Servers P1 provides threat detection on store hardware.</td>
+</tr>
+<tr>
+<td><strong>Is the software scanned?</strong></td>
+<td>Microsoft Defender for Containers scans all container images for known vulnerabilities.</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>Network Diagram (Simplified)</h2>
+
+<pre><code>                    ┌────────────────────────────────────────────────────────┐
+                    │              YOUR AZURE SUBSCRIPTION                   │
+                    │                                                        │
+  Internet ────▶   │  App Gateway WAF ──▶ AKS Cluster                      │
+  (Chatbot only)   │  (public IP)         ├─ Control Center                 │
+                    │                      ├─ Commerce Gateway               │
+  Internal ────▶   │  Internal LB ────▶   └─ AI/ML Services                │
+  (Portal)         │  (private IP)                                           │
+                    │                                                        │
+                    │  PostgreSQL (×2)   Event Hubs   Storage   Key Vault   │
+                    │  Grafana           Arc          Monitor   Entra ID    │
+                    │                                                        │
+                    │  Customer ACR ──────────────────┐                     │
+                    │   (image source for everything)  │                     │
+                    └──────────────────────────────────┼─────────────────────┘
+                                                       │
+                              ┌─────────────────────────┤
+                              │                         │
+                              ▼                         ▼
+                    ┌──────────────────┐     ┌──────────────────┐
+                    │  Store Server    │     │  Store Server    │
+                    │  Rack (Store 1)  │     │  Rack (Store 2)  │
+                    │  ├─ K3s cluster  │     │  ├─ K3s cluster  │
+                    │  ├─ Registers    │     │  ├─ Registers    │
+                    │  └─ Arc Agent    │     │  └─ Arc Agent    │
+                    └──────────────────┘     └──────────────────┘</code></pre>
+
+<hr />
+
+<h2>Glossary of Azure Terms</h2>
+
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AKS (Azure Kubernetes Service)</strong></td>
+<td>A managed service that runs containers (packaged software). Think of it as a "container orchestra" — it keeps your applications running, restarts them if they crash, and scales them up if needed.</td>
+</tr>
+<tr>
+<td><strong>ACR (Azure Container Registry)</strong></td>
+<td>A private library where container images (the software packages) are stored. Like a private app store just for your organization.</td>
+</tr>
+<tr>
+<td><strong>App Gateway WAF v2</strong></td>
+<td>A firewall that sits in front of your web applications. It blocks common attack patterns (SQL injection, cross-site scripting, etc.) and checks user identity before allowing traffic through.</td>
+</tr>
+<tr>
+<td><strong>Azure Arc</strong></td>
+<td>A management tool that extends Azure's visibility to hardware running outside of Azure (like your store servers). It doesn't move your workloads — it gives you a single pane of glass to see everything.</td>
+</tr>
+<tr>
+<td><strong>Entra ID</strong></td>
+<td>Microsoft's identity and access management service (formerly Azure Active Directory). It handles who can log in, with what permissions, and enforces multi-factor authentication.</td>
+</tr>
+<tr>
+<td><strong>Event Hubs</strong></td>
+<td>A cloud-based message queue that can receive millions of events per second. Meridius uses it with the Kafka protocol to sync store data to the cloud.</td>
+</tr>
+<tr>
+<td><strong>Key Vault</strong></td>
+<td>A secure vault for storing secrets (passwords, API keys, certificates). Access is tightly controlled and audited.</td>
+</tr>
+<tr>
+<td><strong>Managed Identity</strong></td>
+<td>A way for Azure services to authenticate to each other without storing any passwords. Azure handles the credentials behind the scenes.</td>
+</tr>
+<tr>
+<td><strong>PostgreSQL Flexible Server</strong></td>
+<td>A managed database service. "Managed" means Microsoft handles backups, patches, and high availability — you just use the database.</td>
+</tr>
+<tr>
+<td><strong>Private Endpoint</strong></td>
+<td>A network interface that connects your Azure services using a private IP address inside your virtual network, keeping traffic off the public internet.</td>
+</tr>
+<tr>
+<td><strong>Solution Template</strong></td>
+<td>An automated deployment recipe (ARM template) that creates all Azure resources in one go. You approve it and Azure builds everything.</td>
+</tr>
+<tr>
+<td><strong>VNet (Virtual Network)</strong></td>
+<td>Your private network space in Azure. All your resources communicate inside this network, isolated from others.</td>
+</tr>
+</tbody>
+</table>
+
+</body>
+</html>
