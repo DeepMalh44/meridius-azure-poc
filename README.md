@@ -15,9 +15,12 @@ This repository contains the Bicep templates and deployment script to provision 
 | **Key Vault** | Standard, RBAC auth | Secrets and connection strings |
 | **Log Analytics Workspace** | Pay-per-GB | Centralized logging and AKS monitoring |
 | **Managed Grafana** | Standard | Real-time dashboards (store health, registers) |
+| **Private Endpoints** | ACR, Key Vault, Event Hubs, Grafana | Private-only access to PaaS services from VNet |
 | **Managed Identities** | User-Assigned × 2 | AKS cluster identity + workload identity |
 
-**Estimated monthly cost: ~$700–800** (core services only, no AI/WAF components)
+**Estimated monthly cost: ~$800–950** (core services with private connectivity, no AI/WAF components)
+
+**Network posture:** AKS API is private cluster mode and ACR/Key Vault/Event Hubs/Grafana are configured for private endpoint access.
 
 ---
 
@@ -217,7 +220,7 @@ Key Kafka compatibility notes:
 │  │  └────────────────────────────────────────────────────┘  │   │
 │  │                                                           │   │
 │  │  ┌─── Endpoints Subnet 10.100.17.0/24 ───────────────┐  │   │
-│  │  │  (Reserved for Private Endpoints in hardening)     │  │   │
+│  │  │  Private Endpoints: ACR, Key Vault, EH, Grafana    │  │   │
 │  │  └────────────────────────────────────────────────────┘  │   │
 │  └───────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -269,9 +272,10 @@ az group delete --name meridius-poc-rg --yes --no-wait
 
 ## What's Next (After POC Validation)
 
-1. **Harden** — Add Private Endpoints, App Gateway WAF, AI Foundry
-2. **Modularize** — Split `main.bicep` into per-domain modules (networking, AKS, data, security, observability, ingress, AI)
-3. **Marketplace** — Build createUiDefinition.json, package CNAB bundle, submit to Partner Center
-4. **Production** — Scale node pools, enable PostgreSQL HA, add Defender, configure Azure Arc for stores
+1. **Ingress Security** — Add App Gateway WAF and controlled public ingress where needed
+2. **AI Extension** — Add Azure AI Foundry and ML workloads for chatbot/vision use cases
+3. **Modularize** — Split `main.bicep` into per-domain modules (networking, AKS, data, security, observability, ingress, AI)
+4. **Marketplace** — Build createUiDefinition.json, package CNAB bundle, submit to Partner Center
+5. **Production** — Scale node pools, enable PostgreSQL HA, add Defender, configure Azure Arc for stores
 
 See the [Meridius Azure Go-Live Implementation Plan](../Meridius-Azure-Go-Live-Plan.md) for the full production roadmap.

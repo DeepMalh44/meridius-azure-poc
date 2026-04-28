@@ -14,6 +14,8 @@
 //   - Key Vault (RBAC authorization)
 //   - Log Analytics Workspace
 //   - Managed Grafana
+//   - Private Endpoints (ACR, Key Vault, Event Hubs, Grafana)
+//   - Private DNS Zones + VNet links for Private Endpoints
 //   - User-Assigned Managed Identity (for AKS workload identity)
 // ============================================================================
 
@@ -92,6 +94,7 @@ var endpointsSubnetPrefix = '10.100.17.0/24' // Future Private Endpoints
 // Explicit subnet resource IDs (avoids preflight issues on redeployment)
 var aksSubnetId = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'aks-subnet')
 var servicesSubnetId = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'services-subnet')
+var endpointsSubnetId = resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, 'endpoints-subnet')
 
 // ── User-Assigned Managed Identities ────────────────────────────────────────
 
@@ -144,6 +147,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
         name: 'endpoints-subnet'
         properties: {
           addressPrefix: endpointsSubnetPrefix
+          privateEndpointNetworkPolicies: 'Disabled'
         }
       }
     ]
@@ -182,6 +186,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
     name: 'Standard'
   }
   properties: {
+    publicNetworkAccess: 'Disabled'
     adminUserEnabled: false  // Use managed identity, not admin credentials
   }
 }
@@ -199,6 +204,10 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
   }
   properties: {
     dnsPrefix: aksName
+    apiServerAccessProfile: {
+      enablePrivateCluster: true
+      enablePrivateClusterPublicFQDN: false
+    }
     // Omit kubernetesVersion to use AKS default (latest stable)
     networkProfile: {
       networkPlugin: 'azure'
@@ -275,6 +284,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     }
     tenantId: subscription().tenantId
     enableRbacAuthorization: true
+    publicNetworkAccess: 'Disabled'
     enableSoftDelete: true
     softDeleteRetentionInDays: 7  // Short for POC — increase for production
     // enablePurgeProtection omitted = disabled (allows purge for easy POC cleanup)
@@ -295,6 +305,7 @@ resource eventHubsNamespace 'Microsoft.EventHub/namespaces@2024-01-01' = {
     isAutoInflateEnabled: true
     maximumThroughputUnits: eventHubsThroughputUnits * 2
     kafkaEnabled: true
+    publicNetworkAccess: 'Disabled'
   }
 }
 
@@ -315,8 +326,76 @@ resource postgresDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   location: 'global'
 }
 
+resource acrDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
+  name: 'privatelink.azurecr.io'
+  location: 'global'
+}
+
+resource keyVaultDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
+  name: 'privatelink.vaultcore.azure.net'
+  location: 'global'
+}
+
+resource eventHubsDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
+  name: 'privatelink.servicebus.windows.net'
+  location: 'global'
+}
+
+resource grafanaDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
+  name: 'privatelink.grafana.azure.com'
+  location: 'global'
+}
+
 resource postgresDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
   parent: postgresDnsZone
+  name: '${vnetName}-link'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: vnet.id
+    }
+    registrationEnabled: false
+  }
+}
+
+resource acrDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: acrDnsZone
+  name: '${vnetName}-link'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: vnet.id
+    }
+    registrationEnabled: false
+  }
+}
+
+resource keyVaultDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: keyVaultDnsZone
+  name: '${vnetName}-link'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: vnet.id
+    }
+    registrationEnabled: false
+  }
+}
+
+resource eventHubsDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: eventHubsDnsZone
+  name: '${vnetName}-link'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: vnet.id
+    }
+    registrationEnabled: false
+  }
+}
+
+resource grafanaDnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: grafanaDnsZone
   name: '${vnetName}-link'
   location: 'global'
   properties: {
@@ -419,9 +498,167 @@ resource grafana 'Microsoft.Dashboard/grafana@2023-09-01' = {
   }
   properties: {
     grafanaMajorVersion: '11'
-    publicNetworkAccess: 'Enabled'  // POC — restrict in production
+    publicNetworkAccess: 'Disabled'
     apiKey: 'Enabled'
   }
+}
+
+// ── Private Endpoints ───────────────────────────────────────────────────────
+
+resource acrPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
+  name: '${environmentName}-acr-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: endpointsSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'acr-connection'
+        properties: {
+          privateLinkServiceId: acr.id
+          groupIds: [
+            'registry'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource acrPrivateEndpointDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
+  parent: acrPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'acr-dns'
+        properties: {
+          privateDnsZoneId: acrDnsZone.id
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    acrDnsZoneVnetLink
+  ]
+}
+
+resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
+  name: '${environmentName}-kv-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: endpointsSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'kv-connection'
+        properties: {
+          privateLinkServiceId: keyVault.id
+          groupIds: [
+            'vault'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource keyVaultPrivateEndpointDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
+  parent: keyVaultPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'keyvault-dns'
+        properties: {
+          privateDnsZoneId: keyVaultDnsZone.id
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    keyVaultDnsZoneVnetLink
+  ]
+}
+
+resource eventHubsPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
+  name: '${environmentName}-eh-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: endpointsSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'eh-connection'
+        properties: {
+          privateLinkServiceId: eventHubsNamespace.id
+          groupIds: [
+            'namespace'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource eventHubsPrivateEndpointDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
+  parent: eventHubsPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'eventhubs-dns'
+        properties: {
+          privateDnsZoneId: eventHubsDnsZone.id
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    eventHubsDnsZoneVnetLink
+  ]
+}
+
+resource grafanaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
+  name: '${environmentName}-grafana-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: endpointsSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'grafana-connection'
+        properties: {
+          privateLinkServiceId: grafana.id
+          groupIds: [
+            'grafana'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource grafanaPrivateEndpointDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
+  parent: grafanaPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'grafana-dns'
+        properties: {
+          privateDnsZoneId: grafanaDnsZone.id
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    grafanaDnsZoneVnetLink
+  ]
 }
 
 // Grant Grafana Monitoring Reader on the resource group for dashboard access
